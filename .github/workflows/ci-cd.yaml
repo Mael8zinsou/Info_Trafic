@@ -2,9 +2,9 @@ name: infotrafic-train-equipe_solo1
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "Prod" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "Prod" ]
 
 jobs:
   build-and-push:
