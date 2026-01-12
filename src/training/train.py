@@ -46,7 +46,7 @@ def main():
     )
 
 
- # Standardisation des features numériques
+# Standardisation des features numériques
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -63,7 +63,7 @@ def main():
     print("\nClassification report :")
     print(classification_report(y_test, y_pred))
 
-    joblib.dump(model, MODEL_DIR / "model.joblib")
+    joblib.dump(model, MODEL_DIR / "model_v1.joblib")
     print("Modèle sauvegardé")
 
 if __name__ == "__main__":
