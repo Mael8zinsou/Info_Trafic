@@ -1,0 +1,23 @@
+# --- API & Server ---
+fastapi
+uvicorn[standard]
+
+# --- Data processing ---
+pandas==2.2.2
+pyarrow
+
+# --- Machine Learning ---
+scikit-learn==1.5.1
+xgboost
+joblib==1.4.2
+
+# --- Messaging ---
+paho-mqtt
+
+# --- Cloud / AWS ---
+boto3
+
+# --- Visualization / Apps ---
+streamlit
+matplotlib
+seaborn
