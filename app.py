@@ -1,39 +1,39 @@
 # app.py
 
 import argparse
-
-import time
-
+import logging
 import threading
 
+from src.ingest.app import ingest_run
+from src.etl.app import etl_process
 from src.training.train import main
 
+# Configuration simple, une fois
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.FileHandler("logs/app.log"),  # fichier dans ton dossier logs
+        logging.StreamHandler()               # affichage console
+    ]
+)
+
 def ingest():
-
-    print("📥 Lancement de l’ingestion...")
-
-    time.sleep(2)
-
-    print("✅ Ingestion terminée !")
+    logger = logging.getLogger("ingest")
+    logger.info("📥 Lancement de l’ingestion...")
+    ingest_run()
+    logger.info("✅ Ingestion terminée !")
 
 def etl():
-
-    print("🔄 Lancement de l’ETL...")
-
-    time.sleep(3)
-
-    print("✅ ETL terminé !")
-
+    logger = logging.getLogger("etl")
+    logger.info("🔄 Lancement de l’ETL...")
+    etl_process()
+    logger.info("✅ ETL terminé !")
 def training():
-
-    print("🤖 Lancement du training ML...")
-    print("📦 Délégation vers src.training.train")
-
+    logger = logging.getLogger("training")
+    logger.info("🤖 Lancement du training ML...")
     main()
-    time.sleep(5)
-
-    print("✅ Training terminé !")
-
+    logger.info("✅ Training terminé !")
 def run_api():
 
     from fastapi import FastAPI
