@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Dépendances (tu peux choisir requirements.txt OU ton requirements.api.txt)
+# Option recommandée chez toi : requirements.api.txt (spécifique API)
+COPY docker/requirements/requirements.api.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Code API
+COPY serving/ /app/serving/
+
+# Modèle (serving uniquement : copié dans l'image comme demandé)
+COPY models/ /app/models/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "serving.app:app", "--host", "0.0.0.0", "--port", "8000"]

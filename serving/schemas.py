@@ -1,39 +1,22 @@
 from pydantic import BaseModel, Field
-from typing import Dict
-
-def split_features_target(df):
-    features = [
-        "Identifiant arc",
-        "heure",
-        "jour_semaine",
-        "is_weekend",
-        "Taux d'occupation",
-        "lat",
-        "lon"
-        
-    ]
-
-    df = df.dropna(subset=features + ["Etat trafic"])
-    X = df[features]
-    y = df["Etat trafic"]
-
-    return X, y
-
 
 class PredictionInput(BaseModel):
-    features: Dict[str, float] = Field(
-        # "Identifiant arc",
-        # "heure",
-        # "jour_semaine",
-        # "is_weekend",
-        # "Taux d'occupation",
-        # "lat",
-        # "lon",
-        description="Dictionnaire {nom_feature: valeur} correspondant aux features du modèle"
-    )
+    identifiant_arc: float = Field(..., alias="Identifiant arc")
+    heure: float
+    jour_semaine: float
+    is_weekend: float
+    taux_occupation: float = Field(..., alias="Taux d'occupation")
+    lat: float
+    lon: float
 
-'''class PredictionInput(BaseModel):
-    features: Dict[str, float] = Field(
-        ...,
-        description="Dictionnaire {nom_feature: valeur} correspondant aux features du modèle"
-    )'''
+    def to_model_dict(self):
+        # Re-crée EXACTEMENT les noms attendus par le modèle
+        return {
+            "Identifiant arc": self.identifiant_arc,
+            "heure": self.heure,
+            "jour_semaine": self.jour_semaine,
+            "is_weekend": self.is_weekend,
+            "Taux d'occupation": self.taux_occupation,
+            "lat": self.lat,
+            "lon": self.lon,
+        }
