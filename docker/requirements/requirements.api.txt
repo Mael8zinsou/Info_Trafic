@@ -1,8 +1,6 @@
 fastapi
 uvicorn[standard]
+joblib
 pandas
-paho-mqtt
-boto3
 scikit-learn
-xgboost
-
+pydantic
