@@ -23,10 +23,15 @@ FEATURES = [
     "lon",
 ]
 
-def load_data():
-    df = pd.read_csv(DATA_DIR / "dataset_processed.csv")
+def load_data(dataset_filename="dataset_processed_current.csv"):
+    df = pd.read_csv(DATA_DIR / dataset_filename)
     df = df[df["Etat trafic"] != "Inconnu"]
     return df
+
+# def load_data():
+#     df = pd.read_csv(DATA_DIR / "dataset_processed.csv")
+#     df = df[df["Etat trafic"] != "Inconnu"]
+#     return df
 
 def split_features_target(df):
     df = df.dropna(subset=FEATURES + ["Etat trafic"])
@@ -34,7 +39,7 @@ def split_features_target(df):
     y = df["Etat trafic"]
     return X, y
 
-def main():
+def training_process():
     df = load_data()
     X, y = split_features_target(df)
 
@@ -55,8 +60,8 @@ def main():
     print("\nClassification report :")
     print(classification_report(y_test, y_pred))
 
-    joblib.dump(pipeline, MODEL_DIR / "model_v2.joblib")
+    joblib.dump(pipeline, MODEL_DIR / "model_v1.joblib")
     print("Pipeline sauvegardé (scaler + modèle)")
 
 if __name__ == "__main__":
-    main()
+    training_process()

@@ -6,7 +6,10 @@ import time
 
 import threading
 
-from src.training.train import main
+from src.etl.app import etl_process
+#from src.training.train import training_process
+#from src.training.train_v2 import training_process
+from src.training.train_v2 import training_process_2
 
 def ingest():
 
@@ -20,6 +23,7 @@ def etl():
 
     print("🔄 Lancement de l’ETL...")
 
+    etl_process()
     time.sleep(3)
 
     print("✅ ETL terminé !")
@@ -27,9 +31,11 @@ def etl():
 def training():
 
     print("🤖 Lancement du training ML...")
-    print("📦 Délégation vers src.training.train")
-
-    main()
+    print("📦 Dataset: data/processed/dataset_processed_current.csv")
+    print("📦 Délégation vers src.training.train_v2")
+    #training_process()
+    #training_process_2()
+    training_process_2(dataset_filename="dataset_processed_current.csv", model_name="model_v2.joblib")
     time.sleep(5)
 
     print("✅ Training terminé !")
