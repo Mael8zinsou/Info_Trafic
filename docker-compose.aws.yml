@@ -12,6 +12,8 @@ services:
       - ./logs/ingest:/app/logs
     env_file:
       - .env
+      - .env.aws
+
     networks:
       - ml-network
 
@@ -110,8 +112,6 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
-    environment:
-      - SERVING_API_KEY=${SERVING_API_KEY}
 
   tester:
     image: python:3.12-slim

@@ -1,10 +1,47 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.security import APIKeyHeader
 import joblib
 import pandas as pd
 from pathlib import Path
 import json
-
+import os
+from src.utils.log_utils import get_logger
+from dotenv import load_dotenv
+from pathlib import Path
 from serving.schemas import PredictionInput
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+LOG_DIR = ROOT_DIR / "logs"
+logger = get_logger("serving", LOG_DIR / "serving.log")
+
+load_dotenv()
+
+# Lire depuis env
+
+API_KEY = os.environ.get("SERVING_API_KEY", "")
+# # API_KEY = "random"
+
+# def require_api_key(x_api_key: str = Header(default="")):
+#     if not API_KEY:
+#         return  # mode "no-auth" si non défini (ou tu peux refuser)
+#     if x_api_key != API_KEY:
+#         logger.warning("Unauthorized access attempt (invalid or missing API key)")
+#         raise HTTPException(status_code=401, detail="Unauthorized")
+
+api_key_scheme = APIKeyHeader(name="x-api-key", auto_error=False)
+
+def require_api_key(x_api_key: str = Depends(api_key_scheme)):
+    # 1. Si aucune clé n'est configurée sur le serveur, on laisse passer (ton choix actuel)
+    if not API_KEY:
+        return 
+    
+    # 2. Si une clé est attendue mais absente ou incorrecte
+    if x_api_key != API_KEY:
+        logger.warning(f"Unauthorized access attempt. Received: {x_api_key}")
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
+
+
 
 # app = FastAPI(title="InfoTrafic – API IA")
 app = FastAPI(title="InfoTrafic – API IA (v1 + v2)")
@@ -24,6 +61,15 @@ REGISTRY_PATH = MODEL_DIR / "registry.json"
 models = {"v1": None, "v2": None}
 
 
+
+@app.on_event("startup")
+def verify_config():
+    if not API_KEY:
+        logger.warning("⚠️ ATTENTION : SERVING_API_KEY n'est pas définie. L'API est publique !")
+    else:
+        # On affiche juste les 4 premiers caractères pour vérifier
+        masked_key = API_KEY[:4] + "****"
+        logger.info(f"✅ Clé API chargée : {masked_key}")
 
 @app.on_event("startup")
 def load_models():
@@ -92,7 +138,8 @@ def predict_with(model, data: PredictionInput):
     return str(pred[0])
 
 @app.post("/predict")
-def predict(data: PredictionInput):
+def predict(data: PredictionInput, _=Depends(require_api_key)):
+# def predict(data: PredictionInput):
     version = get_active_version()
     model = models.get(version)
 
@@ -101,24 +148,31 @@ def predict(data: PredictionInput):
 
     try:
         pred = predict_with(model, data)
+        logger.info(f"Prediction request accepted | model={version}")
         return {"version": version, "prediction": pred}
+        
     except Exception as e:
+        logger.exception("Prediction error")
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
     
 @app.post("/predict_v2")
-def predict_v2(data: PredictionInput):
+def predict_v2(data: PredictionInput, _=Depends(require_api_key)):
+# def predict_v2(data: PredictionInput):
     model = models.get("v2")
     if model is None:
         raise HTTPException(status_code=500, detail="Model v2 not loaded")
 
     try:
         pred = predict_with(model, data)
+        logger.info(f"Prediction request accepted | model=v2")
         return {"version": "v2", "prediction": pred}
     except Exception as e:
+        logger.exception("Prediction error")
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
 
 @app.get("/model/info")
-def model_info():
+def model_info(_=Depends(require_api_key)):
+# def model_info():
     reg = read_registry()
     return {
         "active": get_active_version(),
