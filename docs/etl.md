@@ -1,132 +1,101 @@
-# Pipeline d’ingestion de données
+# 📑 Documentation Pipeline & Stratégie MLOps
 
-## Objectif du script
-Le script `ingest_data.py` a pour objectif de charger un échantillon de données depuis un fichier CSV, vérifier que sa structure correspond aux attentes, et produire un journal d’exécution.  
-Cette étape constitue la première brique de l’ingestion des données vers le Data Lake Cloud.
+## 1. Ingestion des Données (Baseline)
 
-## Source des données
-Les données utilisées pour tester le script proviennent d’un **CSV d’échantillon** situé dans :  
+L'étape d'ingestion sécurise l'entrée des données dans le système et garantit la conformité du schéma avant tout traitement.
+
+* **Script :** `ingest_data.py`
+* **Source :** `data/samples/traffic_sample.csv` (échantillon représentatif).
+* **Objectif :** Vérifier la structure, les types, et logger l'état de l'import.
+
+### 📋 Schéma de Données (Extraits)
+
+| Colonne | Type | Description |
+| --- | --- | --- |
+| `Identifiant arc` | Numérique | ID unique du capteur |
+| `Date et heure...` | DateTime | Horodatage du comptage |
+| `Taux d'occupation` | Numérique | **Variable Cible (Target)** |
+| `Etat arc` | Texte | État du capteur (**Ouvert / Invalide**) |
+| `geo_point_2d` | Géo | Coordonnées pour le clustering spatial |
+
+**Monitoring :** Un fichier `logs/ingestion.log` est généré à chaque exécution pour tracer le succès ou l'échec des contrôles.
+
+---
+
+## 2. Séance 7 : Simulation de Drift & Évolution
+
+Cette étape simule un cas réel de **Covariate Drift** (changement de la distribution des variables d'entrée).
+
+### ⚠️ Le Problème : Arcs Invalides
+
+En production, la proportion d'arcs en panne (**Etat arc = Invalide**) augmente, injectant du bruit massif.
+
+* **Cause :** Le modèle V1 interprète le bruit des capteurs défectueux comme du signal réel.
+* **Symptômes :** Baisse de l'accuracy globale, confusion accrue entre les classes *Fluide* et *Pré-saturé*.
+* **Action :** Création d'un pipeline V2 exploitant explicitement l'état de validité et un encodage robuste.
+
+---
+
+## 3. Stratégie d'Entraînement
+
+Nous gérons deux versions du modèle pour assurer la transition et la comparaison.
+
+* **V1 (Baseline) :** Entraînement classique sans gestion du bruit capteur.
+```bash
+python -m src.training.train --dataset dataset_processed.csv --model model_v1.joblib
+
 ```
 
-data/samples/traffic_sample.csv
+
+* **V2 (Robuste) :** Intègre les correctifs de la Séance 7 (features normalisées, gestion `Etat arc`).
+```bash
+python -m src.training.train_v2 --dataset traffic_normalized.csv --model model_v2.joblib
 
 ```
-Ce fichier contient un extrait représentatif du dataset complet et sert uniquement aux tests.
 
-## Format et structure du fichier d’échantillon
 
-### Colonnes attendues
-- Identifiant arc  
-- Libelle  
-- Date et heure de comptage  
-- Débit horaire  
-- Taux d'occupation  
-- Etat trafic  
-- Identifiant noeud amont  
-- Libelle noeud amont  
-- Identifiant noeud aval  
-- Libelle noeud aval  
-- Etat arc  
-- Date debut dispo data  
-- Date fin dispo data  
-- geo_point_2d  
-- geo_shape  
 
-### Types principaux
-- Texte : `Libelle`, `Etat trafic`, `geo_shape`  
-- Numérique : `Débit horaire`, `Taux d'occupation`  
-- Date/heure : `Date et heure de comptage`, `Date debut dispo data`, `Date fin dispo data`  
-- Géométrie : `geo_point_2d`, `geo_shape`
+**Comparaison :** Le script `compare_models.py` permet de valider que la V2 surpasse la V1 sur les données bruitées.
 
-### Exemple de 3 lignes de l’échantillon
+---
 
-| Identifiant arc | Libelle            | Date et heure de comptage  | Débit horaire | Taux d'occupation | Etat trafic | ... |
-|-----------------|------------------|---------------------------|---------------|-----------------|-------------|-----|
-| 5462            | AE_A4_bretelle_11 | 2025-11-04T17:00:00+01:00 |               | 5.25            | Fluide      | ... |
-| 5462            | AE_A4_bretelle_11 | 2025-11-04T18:00:00+01:00 |               | 5.10            | Fluide      | ... |
-| 5462            | AE_A4_bretelle_11 | 2025-11-04T20:00:00+01:00 |               | 29.40           | Pré-saturé  | ... |
+## 4. Serving & Déploiement (Production)
 
-> Note : le CSV complet contient toutes les colonnes listées ci-dessus.
+L'architecture de serving permet une transition sans interruption de service (**Zero Downtime**).
 
-## Exécution du script
-Pour lancer le script, depuis le dossier `etl/` :
+### 🚀 Stratégie de Bascule (Blue-Green)
+
+Le choix du modèle actif est piloté par un fichier de configuration dynamique : `models/active_model.json`.
+
+* **Endpoint `/predict` :** Utilise la version définie comme `"active"` dans le JSON.
+* **Endpoint `/predict_v2` :** Toujours dirigé vers la V2 (Shadow Testing) pour monitoring.
+* **Rollback :** Pour revenir à la V1, il suffit de modifier le JSON sans redémarrer le serveur.
+
+### 🐳 Docker & Reproductibilité
+
+Le projet utilise deux configurations pour garantir la parité des environnements :
+
+1. **Local :** Pour le développement et le test unitaire.
+2. **AWS :** Pour l'exposition externe et le staging.
+
+**Commandes utiles :**
 
 ```bash
-python3 ingest_data.py
+# Lancer le service de serving (Nom de projet : infotraf)
+docker compose -p infotraf up -d --build serving
+
+# Lancer le Shadow Test (Vérification V1 vs V2)
+docker compose -p infotraf run --rm tester
+
 ```
 
-### Sortie attendue
+---
 
-* Affichage du nombre de lignes et de colonnes du CSV chargé
-* Vérification des colonnes obligatoires
-* Création d’un fichier de logs `logs/ingestion.log` contenant :
+## 🛠️ Maintenance & Troubleshooting
 
-  * Date et heure du traitement
-  * Source des données
-  * Résultat des contrôles de structure
-  * Succès ou échec de l’ingestion
-
-
-# Seance 7
-on change les données d'entrée, c'est une évolution en pointe
-## Contexte
-(simulée)
-En situation de production, certains arcs deviennent invalides (panne capteur, maintenance, travaux).
-Ces arcs continuent de produire des mesures bruitées, ce qui modifie la distribution de certaines variables d’entrée, notamment le taux d’occupation.
-## Cause
-  * aucune information sur la qualité capteur
-  * le modèle interprète du bruit comme du signal
-  * hypothèse de stationnarité violée
-## Symptômes
-  * baisse de l’accuracy globale
-
-  * confusion accrue entre Fluide et Pré-saturé
-
-  * erreurs concentrées sur périodes récentes
-## Action
-ajout explicite de l’état de validité de l’arc
-
-adaptation du jeu de features
-
-rééquilibrage des classes
-## Impact
-meilleure robustesse
-
-performance plus stable dans le temps
-
-modèle plus explicable en prod
-
-## lancer le training
-* v1 :   python -m src.training.train --dataset dataset_processed.csv --model model_v1.joblib
-* v2 :   python -m src.training.train_v2 --dataset traffic_normalized.csv --model model_v2.joblib
-
-## Comparer et tracer
-* python -m src.training.compare_models --dataset dataset_retraining_v2.csv
-
-* v1 n’exploite pas Etat arc → il est structurellement moins robuste sur data bruitée
-
-* v2 est conçu pour ça → c’est le but du retraining
-
-## Serving v1 et v2
-
-Shadow + bascule contrôlée :
-
-/predict = modèle actif (v1 au départ)
-
-/predict_v2 = endpoint shadow (toujours v2 pour comparer)
-
-un fichier models/active_model.json pilote la bascule :
-
-{"active":"v1"} → prod v1
-
-{"active":"v2"} → prod v2
-
-rollback = remettre v1 dans le JSON
-
-### Bascule / rollback
-
-Édite models/active_model.json :
-
-bascule prod → {"active":"v2"}
-
-rollback → {"active":"v1"}
+> [!IMPORTANT]
+> **Alerte Compatibilité Scikit-Learn**
+> Les modèles (`.joblib`) sont sensibles aux versions de bibliothèque.
+> * **Erreur :** `_RemainderColsList` au startup.
+> * **Cause :** Différence entre la version de training (1.5.1) et celle du container (1.8.0).
+> * **Solution :** Toujours aligner le `requirements.txt` du container sur l'environnement de training.

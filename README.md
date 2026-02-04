@@ -1,158 +1,195 @@
-# Projet Fil Rouge – Prédiction de Trafic Routier
+# 🚦 InfoTrafic — Projet Fil Rouge MLOps
 
-## 🎯 Objectif
-
-Prédire le niveau de trafic 1 heure à l’avance sur un axe parisien donné, en exploitant les données open data des capteurs permanents.
-
-## 👥 Équipe
-
-* MLOps : Ivan
-* Lead Data : Ismael
-* API : Mael
-* RGPD/Sécurité : Merveille
-
-## 📊 Données utilisées
-
-* Source principale :
-  Comptage Routier — Capteurs permanents (OpenData Paris)
-  [opendata.paris.fr](https://opendata.paris.fr/explore/dataset/comptages-routiers-permanents/dataviz/?disjunctive.libelle&disjunctive.libelle_nd_amont&disjunctive.libelle_nd_aval&disjunctive.etat_trafic&sort=t_1h)
-* Description : mesures en continu du trafic routier (intensité, timestamp, ID capteur).
-* Format : CSV
-* Champs principaux : `t_1h`, `id_nd`, `etat_trafic`, horodatage, intensité trafic.
-
-## 🧠 KPI
-
-MAE entre trafic prédit et réel (volume horaire).
-
-## 📦 Stack
-
-FastAPI, MLflow, Docker, GitHub Actions, GCP/AWS Free Tier.
+**Industrialisation d’un modèle de prédiction de l’état du trafic**
 
 ---
 
-# 🚦Info_Trafic – Structure du projet
+## 🎯 Objectif du projet
 
-```text
-project/
-├─ app.py                        # Script principal / orchestrateur
-├─ README.md                     # Documentation principale
-├─ .gitignore                    # Fichiers et dossiers à ignorer par Git
-├─ docker-compose.yml            # Orchestration des conteneurs Docker
-├─ data/                         # Données : raw, processed, models, samples
-├─ docker/                       # Dockerfiles et requirements spécifiques
-│  ├─ Dockerfile.ingest
-│  ├─ Dockerfile.etl
-│  ├─ Dockerfile.training
-│  ├─ Dockerfile.front
-├─ Dockerfile.api
-│  └─ requirements/
-├─ src/                          # Code backend
-│  ├─ ingest/
-│  ├─ etl/
-│  ├─ training/
-│  └─ utils/
-├─ frontend/                     # Interface utilisateur / dashboard
-│  ├─ app_front.py
-│  ├─ components/
-│  └─ assets/
-└─ docs/                         # Documentation supplémentaire
-````
+**InfoTrafic** est un projet fil rouge visant à concevoir une **chaîne MLOps complète**, de la donnée brute jusqu’au serving sécurisé d’un modèle de machine learning.
 
+Le projet met l’accent sur :
 
-## 🐳 Les différents conteneurs Docker et leur rôle
+* la **robustesse du pipeline**,
+* la **gestion de la dérive des données**,
+* l’**évolution contrôlée des modèles**,
+* la **sécurité, la conformité et la gouvernance de l’IA**.
 
-Le projet est organisé en **plusieurs conteneurs Docker**, chacun ayant une responsabilité spécifique. Cela permet d’isoler les services, de faciliter le développement et de partager les données via des volumes.
-
-| Conteneur    | Dockerfile            | Dossier copié                  | Volumes utilisés                             | Rôle                                                                                      |
-| ------------ | --------------------- | ------------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **ingest**   | `Dockerfile.ingest`   | `src/ingest/` + `src/utils/`   | `/app/raw`, `/app/samples`                   | Collecte les données depuis MQTT ou API et les stocke dans `raw/`.                        |
-| **etl**      | `Dockerfile.etl`      | `src/etl/` + `src/utils/`      | `/app/raw`, `/app/processed`, `/app/samples` | Nettoie, transforme et enrichit les données.                                              |
-| **training** | `Dockerfile.training` | `src/training/` + `src/utils/` + `models/` | `/app/processed`, `/app/models`              | Entraîne les modèles ML et les sauvegarde dans `models/`.                                 |
-| **front**    | `Dockerfile.front`    | `frontend/` + `src/utils/` + `models/`    | `/app/processed`, `/app/models`              | Affiche les données et résultats via l’interface utilisateur (Streamlit ou autre).        |
-| **api**      | `Dockerfile.api`      | `app.py`              | `-`                                  | Expose FastAPI pour déclencher le pipeline (ingest, ETL, training) via des requêtes HTTP. |
+Il s’inscrit dans un cadre académique, avec une approche réaliste inspirée de contextes industriels.
 
 ---
 
-### Points importants
+## 🧠 Cas d’usage
 
-* Chaque conteneur **est isolé** et a ses propres dépendances (`requirements.txt` spécifique).
-* Les dossiers `raw/`, `processed/` et `models/` sont **mutualisés via des volumes**, permettant la communication entre conteneurs.
-* Cela permet de **lancer uniquement un service** pour le développement ou le test, sans reconstruire tout le pipeline.
-* Le front peut accéder aux données et modèles produits par les autres conteneurs en temps réel.
-* L’API permet de **déclencher tout le pipeline** ou des parties spécifiques via des endpoints HTTP (`/ingest`, `/etl`, `/training`).
+À partir de données Open Data issues de capteurs routiers parisiens, le système prédit l’**état du trafic** (ex. Fluide, Pré-saturé, Saturé) pour un segment routier donné, en fonction de :
+
+* l’heure et le jour,
+* le taux d’occupation,
+* la localisation,
+* l’état de validité du capteur.
+
+Le système agit comme **une aide à la décision**, sans automatisation de décisions critiques.
 
 ---
 
-# ▶️ Exécuter le projet via Docker
+## 🏗️ Architecture globale
 
-## 1. Lancer tout le pipeline avec Docker Compose
+Le projet repose sur une architecture **modulaire et conteneurisée**, orchestrée par Docker Compose.
 
-Depuis la racine du projet, tu peux construire et démarrer **tous les services** (ingest, ETL, training, front, API) en une seule commande :
+```
+Données Open Data
+      ↓
+Import local (raw / samples)
+      ↓
+ETL (Docker)
+      ↓
+Données traitées + historisation
+      ↓
+Training (v1 / v2)
+      ↓
+Registry & métriques
+      ↓
+Serving FastAPI (v1 / v2 + shadow)
+```
+
+👉 Une description détaillée est disponible dans `docs/architecture.md`.
+
+---
+
+## 🔄 Pipeline MLOps
+
+### 1️⃣ Données
+
+* Données Open Data (Ville de Paris)
+* Import manuel
+* Stockage local (`data/raw`, `data/samples`)
+
+### 2️⃣ ETL
+
+* Nettoyage et transformations
+* Feature engineering temporel
+* Historisation des datasets
+* Logs dédiés
+
+📄 Détails : `docs/etl.md`
+
+---
+
+### 3️⃣ Entraînement & retraining
+
+* Modèle v1 : baseline
+* Modèle v2 : intégration de la variable **Etat arc** pour gérer la dérive capteur
+* Comparaison automatique des performances
+* Registry de modèles
+
+📁 Artefacts : `models/`
+📄 Docs : `docs/doc_structure_et_echantillon.md`
+
+---
+
+### 4️⃣ Serving & évolution contrôlée
+
+* API FastAPI
+* v1 et v2 chargées simultanément
+* Shadow testing (`/predict_v2`)
+* Bascule et rollback via `active_model.json`
+* Logs de serving
+
+📄 Docs : `docs/Serving_3.md`
+
+---
+
+## 🔐 Sécurité, conformité et gouvernance
+
+Le projet intègre dès la conception :
+
+* authentification par **clé API** pour le serving,
+* journalisation minimale des accès,
+* traçabilité des modèles et des données,
+* gouvernance claire du cycle de vie IA.
+
+📄 Documents dédiés :
+
+* `docs/registre_ia.md`
+* `docs/gouvernance_ia.md`
+
+---
+
+## 🐳 Docker & exécution
+
+Chaque composant est isolé dans un conteneur Docker :
+
+* ETL
+* Training
+* Serving
+* (Front et API auxiliaires)
+
+L’orchestration est assurée par **Docker Compose**.
+
+📄 Détails : `docs/Docker.md`
+📄 Guide pas-à-pas : `docs/run_local.md`
+
+---
+
+## ▶️ Lancer le projet en local (résumé)
 
 ```bash
-docker-compose up --build
+docker compose -p infotraf up -d --build serving
 ```
 
-* `--build` : reconstruit toutes les images avant de démarrer les conteneurs.
-* Tous les conteneurs utilisent les volumes mutualisés (`data/raw`, `data/processed`, `data/models`).
-* Le front (Streamlit) sera accessible sur le port défini (ex. `8501`).
-* L’API FastAPI sera accessible sur `http://localhost:8000` avec la documentation interactive `http://localhost:8000/docs`.
+Tester l’API :
 
-Pour lancer en arrière-plan :
+* `GET /health`
+* `POST /predict` (clé API requise)
 
-```bash
-docker-compose up -d
+👉 Voir `docs/run_local.md` pour les commandes complètes.
+
+---
+
+## ⚠️ Difficultés & améliorations futures
+
+Certaines limites ont été identifiées :
+
+* déploiement cloud (AWS) non finalisé,
+* absence de HTTPS,
+* monitoring avancé non implémenté,
+* CI/CD à automatiser.
+
+Ces points sont analysés et documentés dans :
+📄 `docs/difficultes_et_ameliorations.md`
+
+---
+
+## 📁 Structure du dépôt (simplifiée)
+
+```
+InfoTrafic/
+├── app.py
+├── data/
+├── docker/
+├── docker-compose.yml
+├── docs/
+├── logs/
+├── models/
+├── serving/
+├── src/
+└── scripts/
 ```
 
 ---
 
-## 2. Lancer un seul service
+## ✅ Conclusion
 
-Si tu veux travailler sur **un service spécifique** sans démarrer tous les conteneurs :
+Le projet **InfoTrafic** propose :
 
-```bash
-docker-compose up --build etl
-```
+* une chaîne MLOps complète et fonctionnelle,
+* une gestion réaliste de la dérive des données,
+* un serving sécurisé et versionné,
+* une documentation claire et structurée.
 
-* Remplace `etl` par `ingest`, `training`, `front` ou `api` selon le service que tu veux lancer.
-* Les autres conteneurs **ne seront pas démarrés**, mais les volumes nécessaires seront toujours accessibles.
-
----
-
-## 3. Accéder au terminal d’un conteneur
-
-Pour exécuter des commandes directement dans un conteneur en fonctionnement :
-
-```bash
-docker exec -it <nom_du_conteneur> /bin/bash
-```
-
-* Exemple pour ETL :
-
-```bash
-docker exec -it etl_container /bin/bash
-```
-
-* Tu peux ensuite naviguer dans le conteneur, lancer des scripts Python ou inspecter les fichiers montés dans `/app/raw`, `/app/processed`, etc.
+Il constitue une base solide pour une **industrialisation de l’IA**, tout en restant adaptée à un cadre pédagogique.
 
 ---
 
-## 4. Accéder à l’interface Front
-
-* Streamlit :
-
-```text
-http://localhost:8501
-```
-
-* API FastAPI :
-
-```text
-http://localhost:8000
-```
-
-* Documentation interactive (Swagger) :
-
-```text
-http://localhost:8000/docs
-```
+📌 **Auteurs** : Merveille MAKOUGAN et Maël ZINSOU
+📌 **Contexte** : Projet fil rouge – Industrialisation de l’IA dans le Cloud
