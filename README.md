@@ -191,5 +191,4 @@ Il constitue une base solide pour une **industrialisation de l’IA**, tout en r
 
 ---
 
-📌 **Auteurs** : Merveille MAKOUGAN et Maël ZINSOU
 📌 **Contexte** : Projet fil rouge – Industrialisation de l’IA dans le Cloud

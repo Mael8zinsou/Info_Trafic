@@ -21,3 +21,9 @@ logs/
 
 # ML
 models/
+
+# AI agents
+.claude/
+.claudeignore
+CLAUDE.md
+graphify-out/
