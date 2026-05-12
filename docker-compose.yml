@@ -126,6 +126,7 @@ services:
       sh -c "pip install --no-cache-dir requests && python shadow_test.py"
     environment:
       - BASE_URL=http://serving:8000
+      - SERVING_API_KEY=${SERVING_API_KEY}
     networks:
       - ml-network
 

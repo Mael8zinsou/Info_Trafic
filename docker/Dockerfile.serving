@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Code API
 COPY serving/ /app/serving/
 
+# Modules partagés (log_utils etc.)
+COPY src/ /app/src/
+
 # Modèle (serving uniquement : copié dans l'image comme demandé)
 COPY models/ /app/models/
 
