@@ -33,7 +33,18 @@ jobs:
         run: |
           pytest tests/ -v
 
+      - name: Check serving models present (skip smoke if absent)
+        id: check_models
+        run: |
+          if [ -f models/model_v1.joblib ] && [ -f models/model_v2.joblib ]; then
+            echo "models_present=true" >> $GITHUB_OUTPUT
+          else
+            echo "models_present=false" >> $GITHUB_OUTPUT
+            echo "::notice::Modèles .joblib absents (gitignored) — smoke test serving skip"
+          fi
+
       - name: Smoke test - build serving container + curl /health
+        if: steps.check_models.outputs.models_present == 'true'
         env:
           SERVING_API_KEY: ci-smoke-key
         run: |
@@ -60,7 +71,7 @@ jobs:
           echo "[OK] smoke test passed"
 
       - name: Smoke test cleanup
-        if: always()
+        if: always() && steps.check_models.outputs.models_present == 'true'
         run: docker compose -p infotraf down -v || true
 
       - name: Set up Docker Buildx
