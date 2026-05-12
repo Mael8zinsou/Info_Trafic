@@ -62,18 +62,22 @@ def main(model_v1: str, model_v2: str, dataset: str, out_csv: str):
     reg = load_registry()
     now = datetime.now().isoformat(timespec="seconds")
 
+    rel_v1 = model_v1_path.relative_to(ROOT_DIR).as_posix()
+    rel_v2 = model_v2_path.relative_to(ROOT_DIR).as_posix()
+    rel_dataset = dataset_path.relative_to(ROOT_DIR).as_posix()
+
     reg["v1"] = {
         "timestamp": now,
-        "model_path": str(model_v1_path),
-        "dataset_eval": str(dataset_path),
+        "model_path": rel_v1,
+        "dataset_eval": rel_dataset,
         "features_num": NUM_FEATURES,
         "features_cat": CAT_FEATURES,
         **as_dict(res1),
     }
     reg["v2"] = {
         "timestamp": now,
-        "model_path": str(model_v2_path),
-        "dataset_eval": str(dataset_path),
+        "model_path": rel_v2,
+        "dataset_eval": rel_dataset,
         "features_num": NUM_FEATURES,
         "features_cat": CAT_FEATURES,
         **as_dict(res2),
