@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 import joblib
 import pandas as pd
@@ -7,7 +7,6 @@ import json
 import os
 from src.utils.log_utils import get_logger
 from dotenv import load_dotenv
-from pathlib import Path
 from serving.schemas import PredictionInput
 
 
@@ -17,40 +16,21 @@ logger = get_logger("serving", LOG_DIR / "serving.log")
 
 load_dotenv()
 
-# Lire depuis env
-
 API_KEY = os.environ.get("SERVING_API_KEY", "")
-# # API_KEY = "random"
-
-# def require_api_key(x_api_key: str = Header(default="")):
-#     if not API_KEY:
-#         return  # mode "no-auth" si non défini (ou tu peux refuser)
-#     if x_api_key != API_KEY:
-#         logger.warning("Unauthorized access attempt (invalid or missing API key)")
-#         raise HTTPException(status_code=401, detail="Unauthorized")
 
 api_key_scheme = APIKeyHeader(name="x-api-key", auto_error=False)
 
 def require_api_key(x_api_key: str = Depends(api_key_scheme)):
-    # 1. Si aucune clé n'est configurée sur le serveur, on laisse passer (ton choix actuel)
     if not API_KEY:
-        return 
-    
-    # 2. Si une clé est attendue mais absente ou incorrecte
+        return
+
     if x_api_key != API_KEY:
         logger.warning(f"Unauthorized access attempt. Received: {x_api_key}")
         raise HTTPException(status_code=401, detail="Invalid or missing API Key")
 
 
-
-# app = FastAPI(title="InfoTrafic – API IA")
 app = FastAPI(title="InfoTrafic – API IA (v1 + v2)")
 
-
-# MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "model_v2.joblib"
-# model = None
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT_DIR / "models"
 
 MODEL_V1_PATH = MODEL_DIR / "model_v1.joblib"
@@ -82,11 +62,7 @@ def load_models():
     if not MODEL_V2_PATH.exists():
         raise RuntimeError(f"Modèle v2 introuvable: {MODEL_V2_PATH}")
     models["v2"] = joblib.load(MODEL_V2_PATH)
-# def load_model():
-#     global model
-#     if not MODEL_PATH.exists():
-#         raise RuntimeError(f"Modèle introuvable: {MODEL_PATH}")
-#     model = joblib.load(MODEL_PATH)
+
 
 def get_active_version() -> str:
     # défaut safe
@@ -139,7 +115,6 @@ def predict_with(model, data: PredictionInput):
 
 @app.post("/predict")
 def predict(data: PredictionInput, _=Depends(require_api_key)):
-# def predict(data: PredictionInput):
     version = get_active_version()
     model = models.get(version)
 
@@ -157,7 +132,6 @@ def predict(data: PredictionInput, _=Depends(require_api_key)):
     
 @app.post("/predict_v2")
 def predict_v2(data: PredictionInput, _=Depends(require_api_key)):
-# def predict_v2(data: PredictionInput):
     model = models.get("v2")
     if model is None:
         raise HTTPException(status_code=500, detail="Model v2 not loaded")
@@ -172,7 +146,6 @@ def predict_v2(data: PredictionInput, _=Depends(require_api_key)):
 
 @app.get("/model/info")
 def model_info(_=Depends(require_api_key)):
-# def model_info():
     reg = read_registry()
     return {
         "active": get_active_version(),
@@ -180,19 +153,6 @@ def model_info(_=Depends(require_api_key)):
         "v1_metrics": {k: reg.get("v1", {}).get(k) for k in ("accuracy", "f1_macro", "n_rows")},
         "v2_metrics": {k: reg.get("v2", {}).get(k) for k in ("accuracy", "f1_macro", "n_rows")},
     }
-
-# @app.post("/predict")
-# def predict(data: PredictionInput):
-#     if model is None:
-#         raise HTTPException(status_code=500, detail="Model not loaded")
-
-#     X = pd.DataFrame([data.to_model_dict()])  # 1 ligne
-
-#     try:
-#         pred = model.predict(X)
-#         return {"prediction": str(pred[0])}
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
 
 @app.get("/health")
 def health():
@@ -202,7 +162,3 @@ def health():
         "model_v1_loaded": models["v1"] is not None,
         "model_v2_loaded": models["v2"] is not None,
     }
-
-# @app.get("/health")
-# def health():
-#     return {"status": "ok", "model_loaded": model is not None}
