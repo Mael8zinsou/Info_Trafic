@@ -27,3 +27,7 @@ python-dotenv
 # --- Tests ---
 pytest==8.3.2
 httpx==0.28.1
+
+# --- Monitoring ---
+prometheus-fastapi-instrumentator==7.0.0
+prometheus-client==0.21.0

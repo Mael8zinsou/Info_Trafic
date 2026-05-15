@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 import joblib
@@ -5,6 +6,8 @@ import pandas as pd
 from pathlib import Path
 import json
 import os
+from prometheus_client import Counter, Histogram, Gauge
+from prometheus_fastapi_instrumentator import Instrumentator
 from src.utils.log_utils import get_logger
 from dotenv import load_dotenv
 from serving.schemas import PredictionInput
@@ -30,6 +33,32 @@ def require_api_key(x_api_key: str = Depends(api_key_scheme)):
 
 
 app = FastAPI(title="InfoTrafic – API IA (v1 + v2)")
+
+# --- Prometheus metrics ---
+# HTTP standard (request rate, latency, status codes) auto-exposées sur /metrics
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+# Custom ML metrics
+ml_predictions_total = Counter(
+    "ml_predictions_total",
+    "Total predictions served, labellisé par version et classe prédite",
+    ["version", "prediction_class"],
+)
+ml_prediction_latency_seconds = Histogram(
+    "ml_prediction_latency_seconds",
+    "Latence d'inférence (hors overhead HTTP)",
+    ["version"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5),
+)
+ml_active_model = Gauge(
+    "ml_active_model",
+    "Version active du modèle (1 = active, 0 = inactive)",
+    ["version"],
+)
+ml_shadow_disagreements_total = Counter(
+    "ml_shadow_disagreements_total",
+    "Nombre de désaccords entre v1 (actif) et v2 (shadow) sur /predict_v2",
+)
 
 MODEL_DIR = ROOT_DIR / "models"
 
@@ -62,6 +91,11 @@ def load_models():
     if not MODEL_V2_PATH.exists():
         raise RuntimeError(f"Modèle v2 introuvable: {MODEL_V2_PATH}")
     models["v2"] = joblib.load(MODEL_V2_PATH)
+
+    # Initialise le gauge "active model" — sera rafraîchi à chaque /predict
+    active = get_active_version()
+    ml_active_model.labels(version="v1").set(1.0 if active == "v1" else 0.0)
+    ml_active_model.labels(version="v2").set(1.0 if active == "v2" else 0.0)
 
 
 def get_active_version() -> str:
@@ -113,33 +147,58 @@ def predict_with(model, data: PredictionInput):
     pred = model.predict(X)
     return str(pred[0])
 
+def _refresh_active_gauge(active: str) -> None:
+    """Met à jour le gauge ml_active_model — 1 sur la version active, 0 sur l'autre."""
+    ml_active_model.labels(version="v1").set(1.0 if active == "v1" else 0.0)
+    ml_active_model.labels(version="v2").set(1.0 if active == "v2" else 0.0)
+
+
 @app.post("/predict")
 def predict(data: PredictionInput, _=Depends(require_api_key)):
     version = get_active_version()
+    _refresh_active_gauge(version)
     model = models.get(version)
 
     if model is None:
         raise HTTPException(status_code=500, detail=f"Model {version} not loaded")
 
     try:
+        t0 = time.perf_counter()
         pred = predict_with(model, data)
+        ml_prediction_latency_seconds.labels(version=version).observe(time.perf_counter() - t0)
+        ml_predictions_total.labels(version=version, prediction_class=pred).inc()
         logger.info(f"Prediction request accepted | model={version}")
         return {"version": version, "prediction": pred}
-        
+
     except Exception as e:
         logger.exception("Prediction error")
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
-    
+
 @app.post("/predict_v2")
 def predict_v2(data: PredictionInput, _=Depends(require_api_key)):
-    model = models.get("v2")
-    if model is None:
+    """Shadow endpoint : tourne v2 et compare avec la version active pour mesurer la dérive."""
+    v2 = models.get("v2")
+    if v2 is None:
         raise HTTPException(status_code=500, detail="Model v2 not loaded")
 
     try:
-        pred = predict_with(model, data)
+        t0 = time.perf_counter()
+        pred_v2 = predict_with(v2, data)
+        ml_prediction_latency_seconds.labels(version="v2").observe(time.perf_counter() - t0)
+        ml_predictions_total.labels(version="v2", prediction_class=pred_v2).inc()
+
+        # Détection de désaccord avec la version active (shadow comparison)
+        active = get_active_version()
+        if active != "v2":
+            active_model = models.get(active)
+            if active_model is not None:
+                pred_active = predict_with(active_model, data)
+                if pred_active != pred_v2:
+                    ml_shadow_disagreements_total.inc()
+                    logger.info(f"Shadow disagreement | active({active})={pred_active} vs v2={pred_v2}")
+
         logger.info(f"Prediction request accepted | model=v2")
-        return {"version": "v2", "prediction": pred}
+        return {"version": "v2", "prediction": pred_v2}
     except Exception as e:
         logger.exception("Prediction error")
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")

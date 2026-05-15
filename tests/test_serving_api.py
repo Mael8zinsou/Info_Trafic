@@ -17,10 +17,13 @@ PAYLOAD = {
 
 @pytest.fixture(scope="module")
 def app_module(monkeypatch_module):
+    # On force la clé AVANT le premier import du module (sinon API_KEY=""
+    # est figée au top-level de serving.app et l'app tourne en mode public).
     monkeypatch_module.setenv("SERVING_API_KEY", "test-key-pytest")
-    from importlib import reload
     import serving.app as serving_app
-    reload(serving_app)
+    # Patch direct de la variable module — load_dotenv a pu écraser l'env var
+    # depuis un .env voisin lors du premier import.
+    serving_app.API_KEY = "test-key-pytest"
     return serving_app
 
 
