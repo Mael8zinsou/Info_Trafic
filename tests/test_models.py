@@ -6,13 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MODELS = ROOT / "models"
 
-# .joblib gitignored — skip si absent (cas CI sans artefacts)
-MODELS_AVAILABLE = (MODELS / "model_v1.joblib").exists() and (MODELS / "model_v2.joblib").exists()
-pytestmark = pytest.mark.skipif(
-    not MODELS_AVAILABLE,
-    reason="Modèles .joblib absents (gitignored) — tests skip en CI sans artefact",
-)
-
 SAMPLE_ROW = {
     "Identifiant arc": 12345,
     "heure": 8,

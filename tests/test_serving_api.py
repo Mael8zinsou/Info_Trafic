@@ -1,16 +1,6 @@
 import os
-from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
-
-
-ROOT = Path(__file__).resolve().parents[1]
-MODELS = ROOT / "models"
-MODELS_AVAILABLE = (MODELS / "model_v1.joblib").exists() and (MODELS / "model_v2.joblib").exists()
-pytestmark = pytest.mark.skipif(
-    not MODELS_AVAILABLE,
-    reason="Modèles .joblib absents (gitignored) — tests serving skip en CI sans artefact",
-)
 
 
 PAYLOAD = {

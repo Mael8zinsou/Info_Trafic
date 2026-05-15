@@ -7,8 +7,72 @@ on:
     branches: [ "Prod" ]
 
 jobs:
-  build-and-push:
+  train:
+    name: Train models from samples
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: ETL on samples (preprod mode)
+        env:
+          ENV: preprod
+        run: |
+          python -m src.etl.app
+          test -f data/processed/dataset_processed_current.csv
+          echo "[OK] ETL produced dataset_processed_current.csv"
+
+      - name: Train v1 (baseline)
+        run: |
+          python -m src.training.train
+          test -f models/model_v1.joblib
+          echo "[OK] model_v1.joblib trained"
+
+      - name: Train v2 (anti-drift, with Etat arc)
+        run: |
+          python -m src.training.train_v2
+          test -f models/model_v2.joblib
+          echo "[OK] model_v2.joblib trained"
+
+      - name: Compare models + update registry
+        run: |
+          python -m src.training.compare_models --dataset dataset_processed_current.csv
+          test -f models/registry.json
+          python -c "import json; r=json.load(open('models/registry.json')); print('v1 acc:', r['v1']['accuracy']); print('v2 acc:', r['v2']['accuracy'])"
+
+      - name: Initialize active_model.json (default v1)
+        run: |
+          echo '{"active": "v1"}' > models/active_model.json
+          cat models/active_model.json
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-artifacts
+          path: |
+            models/model_v1.joblib
+            models/model_v2.joblib
+            models/registry.json
+            models/active_model.json
+            models/comparison_v1_v2.csv
+            models/report_*.txt
+          retention-days: 30
+
+  build-and-push:
+    name: Test + smoke + build Docker
+    runs-on: ubuntu-latest
+    needs: train
 
     steps:
       - name: Checkout
@@ -18,11 +82,26 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
-      - name: Install dependencies (tests)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Download model artifacts from train job
+        uses: actions/download-artifact@v4
+        with:
+          name: model-artifacts
+          path: models/
+
+      - name: Verify artifacts retrieved
+        run: |
+          ls -la models/
+          test -f models/model_v1.joblib
+          test -f models/model_v2.joblib
+          test -f models/registry.json
+          echo "[OK] artifacts ready"
 
       - name: Quick sanity check (train.py exists)
         run: |
@@ -33,27 +112,15 @@ jobs:
         run: |
           pytest tests/ -v
 
-      - name: Check serving models present (skip smoke if absent)
-        id: check_models
-        run: |
-          if [ -f models/model_v1.joblib ] && [ -f models/model_v2.joblib ]; then
-            echo "models_present=true" >> $GITHUB_OUTPUT
-          else
-            echo "models_present=false" >> $GITHUB_OUTPUT
-            echo "::notice::Modèles .joblib absents (gitignored) — smoke test serving skip"
-          fi
-
       - name: Smoke test - build serving container + curl /health
-        if: steps.check_models.outputs.models_present == 'true'
         env:
           SERVING_API_KEY: ci-smoke-key
         run: |
           docker compose -p infotraf up -d --build serving
-          # Attend que le healthcheck passe (max 60s)
           for i in $(seq 1 30); do
             status=$(docker inspect -f '{{.State.Health.Status}}' serving_container 2>/dev/null || echo "starting")
             if [ "$status" = "healthy" ]; then
-              echo "[OK] serving healthy after ${i}*2s"
+              echo "[OK] serving healthy after $((i*2))s"
               break
             fi
             if [ "$i" = "30" ]; then
@@ -63,7 +130,6 @@ jobs:
             fi
             sleep 2
           done
-          # Smoke test HTTP
           curl -fsS http://localhost:8001/health | tee /tmp/health.json
           grep -q '"status":"ok"' /tmp/health.json
           grep -q '"model_v1_loaded":true' /tmp/health.json
@@ -71,7 +137,7 @@ jobs:
           echo "[OK] smoke test passed"
 
       - name: Smoke test cleanup
-        if: always() && steps.check_models.outputs.models_present == 'true'
+        if: always()
         run: docker compose -p infotraf down -v || true
 
       - name: Set up Docker Buildx
