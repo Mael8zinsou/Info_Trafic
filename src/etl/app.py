@@ -38,16 +38,28 @@ def etl_process():
     raw_path = Path(csv_files[0])
     processed_path = PROCESSED_DIR / raw_path.name
 
-    # --- DETECTION DU SEPARATEUR ---
-    with open(raw_path, 'r', encoding='utf-8') as f:
-        first_line = f.readline()
-        # Si un ";" est présent dans l'entête, on utilise ";", sinon ","
-        detected_sep = ';' if ';' in first_line else ','
-    
-    logger.info(f"Séparateur détecté : '{detected_sep}' pour le fichier {raw_path}")
-    logger.info(f"Lecture du fichier {raw_path}")
+    # --- DETECTION ENCODAGE + SEPARATEUR ---
+    # Heuristique BOM puis fallback UTF-8 → ISO-8859-1 (couvre UTF-8 BOM,
+    # UTF-8 pur, Latin-1 / cp1252 — cas standards pour Open Data FR).
+    with open(raw_path, 'rb') as f:
+        raw_head = f.read(4096)
 
-    df = pd.read_csv(raw_path, sep=detected_sep) 
+    if raw_head.startswith(b'\xef\xbb\xbf'):
+        detected_encoding = 'utf-8-sig'
+    else:
+        try:
+            raw_head.decode('utf-8')
+            detected_encoding = 'utf-8'
+        except UnicodeDecodeError:
+            detected_encoding = 'iso-8859-1'
+
+    with open(raw_path, 'r', encoding=detected_encoding) as f:
+        first_line = f.readline()
+        detected_sep = ';' if ';' in first_line else ','
+
+    logger.info(f"Encodage détecté : '{detected_encoding}' | séparateur : '{detected_sep}' | fichier : {raw_path}")
+
+    df = pd.read_csv(raw_path, sep=detected_sep, encoding=detected_encoding)
 
     logger.info("Début de la normalisation des données")
     try:
