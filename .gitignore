@@ -13,6 +13,10 @@ data/processed/
 data/models/
 logs/
 
+# Samples de référence (versionnés pour reproductibilité CI)
+!data/samples/
+!data/samples/*.csv
+
 # IDE / OS
 .vscode/
 .idea/
