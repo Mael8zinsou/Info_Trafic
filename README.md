@@ -1,5 +1,10 @@
 # 🚦 InfoTrafic — Projet Fil Rouge MLOps
 
+[![CI](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml/badge.svg?branch=Prod)](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.5.1-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+
 **Industrialisation d’un modèle de prédiction de l’état du trafic**
 
 ---
