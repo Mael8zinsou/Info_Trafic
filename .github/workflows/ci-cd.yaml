@@ -112,9 +112,12 @@ jobs:
         run: |
           pytest tests/ -v
 
+      - name: Create .env for docker-compose
+        run: |
+          echo "SERVING_API_KEY=ci-smoke-key" > .env
+          echo "[OK] .env créé pour docker-compose"
+
       - name: Smoke test - build serving container + curl /health
-        env:
-          SERVING_API_KEY: ci-smoke-key
         run: |
           docker compose -p infotraf up -d --build serving
           for i in $(seq 1 30); do
