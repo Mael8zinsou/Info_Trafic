@@ -1,4 +1,4 @@
-# 🚦 InfoTrafic — Real-time traffic prediction, the MLOps way
+# 🚦 InfoTrafic — Prédiction temps réel du trafic, façon MLOps
 
 [![CI](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml/badge.svg?branch=Prod)](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
@@ -8,63 +8,65 @@
 [![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
 
-> **End-to-end MLOps pipeline** on Paris Open Data traffic sensors: ETL → reproducible training → versioned blue-green serving → live observability. Production patterns in a portable Docker Compose stack.
+> **Pipeline MLOps end-to-end** sur les données Open Data des capteurs de trafic parisiens : ETL → training reproductible → serving versionné en blue-green → observabilité live. Patterns de production dans une stack Docker Compose portable.
+
+🇬🇧 *English version available at [docs/README.en.md](docs/README.en.md).*
 
 ---
 
 ## ✨ Highlights
 
-- 🏗️ **End-to-end pipeline** — Ingest → ETL → Training (v1 + v2) → Registry → FastAPI serving → Monitoring
-- 🔁 **Reproducible from scratch** — CI builds the models from versioned samples on every run
-- 🟦🟩 **Blue-green deployment** — switch between v1 / v2 by editing a single JSON file, no restart
-- 🕵️ **Shadow testing** — `/predict_v2` runs in parallel, disagreement counter exposed in Prometheus
-- 📊 **Live observability** — Grafana dashboard auto-provisioned with 4 custom ML metrics + standard HTTP
-- 🧪 **CI-validated** — pytest (schemas + models + API) + Docker smoke test + image push on `Prod`
-- 🛡️ **Drift-aware modelling** — v2 trades 8 points of accuracy on clean data for robustness against sensor failure
+- 🏗️ **Pipeline end-to-end** — Ingest → ETL → Training (v1 + v2) → Registry → Serving FastAPI → Monitoring
+- 🔁 **Reproductible from scratch** — la CI rebuilde les modèles depuis des samples versionnés à chaque run
+- 🟦🟩 **Blue-green deployment** — bascule v1 / v2 en éditant un seul fichier JSON, sans redémarrage
+- 🕵️ **Shadow testing** — `/predict_v2` tourne en parallèle, compteur de désaccords exposé en Prometheus
+- 📊 **Observabilité live** — dashboard Grafana auto-provisionné, 4 métriques ML custom + HTTP standard
+- 🧪 **Validé par la CI** — pytest (schemas + models + API) + Docker smoke test + push d'image sur `Prod`
+- 🛡️ **Modélisation drift-aware** — v2 sacrifie 8 points d'accuracy sur données propres pour rester robuste quand le capteur tombe en panne
 
 ---
 
-## 🎬 60-second demo
+## 🎬 Démo en 60 secondes
 
 ```bash
-# 1. Bring up the full stack (API + Prometheus + Grafana)
+# 1. Démarrer la stack complète (API + Prometheus + Grafana)
 docker compose -p infotraf up -d --build serving prometheus grafana
 
-# 2. Generate synthetic traffic to bring the dashboard to life
+# 2. Générer du trafic synthétique pour faire vivre le dashboard
 python scripts/load_test.py --duration 120 --rps 5
 
-# 3. Open:
-#    - Grafana dashboard : http://localhost:3000/d/infotrafic-serving
+# 3. Ouvrir :
+#    - Dashboard Grafana : http://localhost:3000/d/infotrafic-serving
 #    - Swagger UI        : http://localhost:8001/docs
 #    - Prometheus        : http://localhost:9090
 ```
 
-> The Grafana dashboard works in anonymous Viewer mode out of the box. No login required to see metrics flowing.
+> Le dashboard Grafana fonctionne en mode anonyme (Viewer) — pas besoin de login pour voir les métriques.
 
-### Grafana — ML serving dashboard
+### Grafana — dashboard ML serving
 
-![Grafana ML serving dashboard](assets/grafana-dashboard.png)
+![Dashboard Grafana ML serving](assets/grafana-dashboard.png)
 
-*7 panels: active model gauge, total predictions, shadow disagreements, error rate, request rate per endpoint, latency p50/p95/p99 per model version, predictions per class stacked.*
+*7 panels : active model gauge, total predictions, shadow disagreements, error rate, request rate par endpoint, latency p50/p95/p99 par version de modèle, predictions per class empilées.*
 
-### Swagger UI — auto-generated API docs
+### Swagger UI — doc d'API auto-générée
 
 ![Swagger UI](assets/swagger-ui.png)
 
 ---
 
-## 🧠 Use case
+## 🧠 Cas d'usage
 
-Predict the traffic state (`Fluide` / `Pré-saturé` / `Saturé` / `Bloqué`) of a Paris road segment from sensor data — open data from the City of Paris, real-world drift included (`Etat arc=invalide` when a sensor fails).
+Prédire l'état du trafic (`Fluide` / `Pré-saturé` / `Saturé` / `Bloqué`) d'un segment routier parisien à partir des données capteurs — Open Data Ville de Paris, dérive du monde réel incluse (`Etat arc=invalide` quand un capteur tombe en panne).
 
-Two competing models live in production:
+Deux modèles concurrents cohabitent en production :
 
-| Model | Features | Accuracy (clean) | Behaviour under sensor failure |
+| Modèle | Features | Accuracy (clean) | Comportement sous panne capteur |
 | --- | --- | --- | --- |
-| **v1** (baseline) | 7 numerical features | **0.99** | Stays optimistic — ignores `Etat arc` |
-| **v2** (drift-aware) | 7 num + `Etat arc` categorical | **0.97** | Hedges towards "Pré-saturé" when sensor reports `invalide` |
+| **v1** (baseline) | 7 features numériques | **0.99** | Reste optimiste — ignore `Etat arc` |
+| **v2** (drift-aware) | 7 num + `Etat arc` catégorielle | **0.97** | Bascule vers "Pré-saturé" quand le capteur reporte `invalide` |
 
-v2 deliberately sacrifices clean-data accuracy for **robustness under real-world degradation**. The shadow endpoint and Grafana panel quantify that trade-off live.
+v2 sacrifie volontairement de l'accuracy sur données propres pour gagner en **robustesse face à la dégradation terrain**. L'endpoint shadow et le panel Grafana quantifient ce trade-off en live.
 
 ---
 
@@ -73,30 +75,30 @@ v2 deliberately sacrifices clean-data accuracy for **robustness under real-world
 ```mermaid
 flowchart LR
     subgraph Sources
-        OD[Paris Open Data<br/>traffic sensors CSV]
+        OD[Open Data Paris<br/>capteurs trafic CSV]
     end
 
-    subgraph Pipeline ["Containerised pipeline (Docker Compose)"]
-        ETL[ETL service<br/>encoding auto-detect<br/>feature engineering]
+    subgraph Pipeline ["Pipeline conteneurisé (Docker Compose)"]
+        ETL[ETL<br/>auto-détection encodage<br/>feature engineering]
         T1[Train v1<br/>baseline]
         T2[Train v2<br/>drift-aware]
         CMP[Compare + Registry<br/>registry.json]
     end
 
-    subgraph Serving ["Multi-version Serving"]
+    subgraph Serving ["Serving multi-version"]
         API[FastAPI<br/>:8001]
-        ACT["active_model.json<br/>blue-green switch"]
+        ACT["active_model.json<br/>switch blue-green"]
         V1[(model_v1)]
         V2[(model_v2)]
     end
 
-    subgraph Observability
+    subgraph Observability ["Observabilité"]
         PROM[Prometheus<br/>:9090<br/>scrape 5s]
-        GRAF[Grafana<br/>:3000<br/>auto-provisioned dashboard]
+        GRAF[Grafana<br/>:3000<br/>dashboard auto-provisionné]
     end
 
     subgraph CI ["GitHub Actions"]
-        TR[Job: train<br/>reproduces .joblib]
+        TR[Job: train<br/>reproduit les .joblib]
         BP[Job: build-and-push<br/>pytest + smoke + Docker Hub]
     end
 
@@ -104,132 +106,134 @@ flowchart LR
     ETL --> T2 --> CMP
     CMP --> V1
     CMP --> V2
-    V1 -.loaded.-> API
-    V2 -.loaded.-> API
+    V1 -.chargé.-> API
+    V2 -.chargé.-> API
     ACT --> API
     API -- /metrics --> PROM --> GRAF
     TR -.artifacts.-> BP
 ```
 
-Three loosely-coupled layers — training writes artifacts, serving reads them, monitoring scrapes the API. No tight coupling, no synchronous runtime dependency between training and serving.
+Trois couches faiblement couplées — le training écrit des artefacts, le serving les lit, le monitoring scrape l'API. Pas de couplage runtime entre training et serving.
 
 ---
 
-## 🛠️ Tech stack
+## 🛠️ Stack technique
 
-| Layer | Technologies |
+| Couche | Technologies |
 | --- | --- |
-| **Data engineering** | pandas 2.2 · pyarrow · CSV auto-encoding detection |
+| **Data engineering** | pandas 2.2 · pyarrow · auto-détection d'encodage CSV |
 | **ML training** | scikit-learn 1.5.1 · joblib 1.4.2 · LogisticRegression + ColumnTransformer |
-| **Serving** | FastAPI · Pydantic (FR-name aliases) · Uvicorn · APIKeyHeader auth |
-| **Containers** | Docker · Docker Compose · multi-stage Dockerfiles per service |
+| **Serving** | FastAPI · Pydantic (aliases noms FR) · Uvicorn · APIKeyHeader auth |
+| **Conteneurisation** | Docker · Docker Compose · Dockerfiles dédiés par service |
 | **Observability** | prometheus-fastapi-instrumentator 7 · Prometheus 2.55 · Grafana 11.3 |
 | **CI/CD** | GitHub Actions · 2 jobs (train / build-and-push) · Docker Hub · upload-artifact v4 |
-| **Testing** | pytest 8.3 · FastAPI TestClient · httpx 0.28 |
-| **Knowledge graph** | [graphify](https://github.com/safishamsi/graphify) (54 nodes, 14 communities, in `graphify-out/`) |
+| **Tests** | pytest 8.3 · FastAPI TestClient · httpx 0.28 |
+| **Knowledge graph** | [graphify](https://github.com/safishamsi/graphify) (54 nodes, 14 communautés, dans `graphify-out/`) |
 
-### Why each block matters
+### Pourquoi chaque brique compte
 
-#### Data Engineering — robust ETL on real-world data
-The ETL [auto-detects encoding](src/etl/app.py) (UTF-8 BOM, UTF-8, ISO-8859-1) because Open Data isn't always clean. CSVs are historised per run in `data/processed/history/` for audit. Feature engineering creates temporal features (`heure`, `jour_semaine`, `is_weekend`) and extracts lat/lon from a packed `geo_point_2d` field.
+#### Data Engineering — ETL robuste sur des données réelles
+L'ETL [auto-détecte l'encodage](src/etl/app.py) (UTF-8 BOM, UTF-8, ISO-8859-1) parce qu'Open Data n'est pas toujours propre. Les CSV sont historisés à chaque run dans `data/processed/history/` pour l'audit. Le feature engineering crée les features temporelles (`heure`, `jour_semaine`, `is_weekend`) et extrait lat/lon d'un champ `geo_point_2d` packé.
 
-#### ML — two competing models, one anti-drift strategy
-v1 is the baseline (high accuracy on clean data). v2 adds the `Etat arc` categorical feature so the model can hedge when a sensor reports as failed. Both ship together; `active_model.json` decides which serves `/predict`. See [docs/projet_academique.md](docs/projet_academique.md#3-entraînement--retraining).
+#### ML — deux modèles concurrents, une stratégie anti-drift
+v1 est la baseline (haute accuracy sur données propres). v2 ajoute la feature catégorielle `Etat arc` pour que le modèle puisse se méfier quand un capteur est en panne. Les deux livrent ensemble ; `active_model.json` décide lequel sert `/predict`. Voir [docs/projet_academique.md](docs/projet_academique.md#3-entraînement--retraining).
 
-#### Serving — blue-green deployment without restart
-[`get_active_version()`](serving/app.py) re-reads `active_model.json` on every request. Switching v1 → v2 is `echo '{"active":"v2"}' > models/active_model.json` — instant, no rolling restart, no traffic loss.
+#### Serving — blue-green deployment sans redémarrage
+[`get_active_version()`](serving/app.py) relit `active_model.json` à chaque requête. Basculer v1 → v2 c'est `echo '{"active":"v2"}' > models/active_model.json` — instantané, pas de rolling restart, pas de perte de trafic.
 
-#### Observability — 4 custom ML metrics, dashboard provisioned
-The serving exposes [`/metrics`](http://localhost:8001/metrics) with `ml_predictions_total`, `ml_prediction_latency_seconds`, `ml_active_model`, `ml_shadow_disagreements_total`. Grafana picks up the dashboard from `monitoring/grafana/dashboards/` on boot — no manual import. Full runbook: [docs/monitoring.md](docs/monitoring.md).
+#### Observability — 4 métriques ML custom, dashboard provisionné
+Le serving expose [`/metrics`](http://localhost:8001/metrics) avec `ml_predictions_total`, `ml_prediction_latency_seconds`, `ml_active_model`, `ml_shadow_disagreements_total`. Grafana charge le dashboard depuis `monitoring/grafana/dashboards/` au boot — pas d'import manuel. Runbook complet : [docs/monitoring.md](docs/monitoring.md).
 
-#### CI/CD — fully reproducible
-The CI has two jobs. The first (`train`) runs the ETL on versioned samples, trains v1 + v2, and uploads the `.joblib` files as artifacts. The second (`build-and-push`) downloads them, runs pytest (10 tests), boots the serving container, smoke-tests `/health`, then builds and pushes the training image to Docker Hub. **From a clean checkout the entire stack can be rebuilt by GitHub Actions alone.**
+#### CI/CD — entièrement reproductible
+La CI a deux jobs. Le premier (`train`) lance l'ETL sur les samples versionnés, entraîne v1 + v2, et upload les fichiers `.joblib` en artefacts. Le second (`build-and-push`) les télécharge, lance pytest (10 tests), démarre le container serving, smoke-test `/health`, puis build et push l'image de training sur Docker Hub. **Depuis un clone propre, toute la stack peut être rebuildée par GitHub Actions seul.**
 
 ---
 
-## 🧪 What the CI does on every push to `Prod`
+## 🧪 Ce que fait la CI à chaque push sur `Prod`
 
 ```
-┌─────────────────────────────────┐    artifacts     ┌────────────────────────────────────┐
+┌─────────────────────────────────┐    artefacts     ┌────────────────────────────────────┐
 │ Job 1: train                    │ ───────────────▶ │ Job 2: build-and-push              │
-│ • ETL on versioned samples      │  models/*.joblib │ • download artifacts               │
+│ • ETL sur samples versionnés    │  models/*.joblib │ • download artefacts               │
 │ • train v1 (baseline)           │  registry.json   │ • pytest tests/ (schemas/models/API)│
-│ • train v2 (drift-aware)        │                  │ • boot serving, curl /health        │
-│ • compare + registry            │                  │ • docker build + push to Docker Hub │
-│ • upload-artifact (30d)         │                  │                                    │
+│ • train v2 (drift-aware)        │                  │ • démarre serving, curl /health    │
+│ • compare + registry            │                  │ • docker build + push Docker Hub   │
+│ • upload-artifact (30j)         │                  │                                    │
 └─────────────────────────────────┘                  └────────────────────────────────────┘
             ~2 min                                                  ~3 min
 ```
 
-Both must pass for the badge to stay green. Latest run: see the [Actions tab](https://github.com/Mael8zinsou/Info_Trafic/actions).
+Les deux jobs doivent passer pour que le badge reste vert. Run en cours : voir l'[onglet Actions](https://github.com/Mael8zinsou/Info_Trafic/actions).
 
 ---
 
-## 📁 Repository structure
+## 📁 Structure du dépôt
 
 ```
 InfoTrafic/
-├── .github/workflows/ci-cd.yaml      # 2-job CI: train → build-and-push
-├── data/samples/                     # Open Data CSV samples (versioned for CI reproducibility)
-├── docker/                           # One Dockerfile per service + requirements
-├── docker-compose.yml                # serving + monitoring stack
-├── docs/                             # Architecture, ETL, serving, monitoring, governance
-│   ├── monitoring.md                 # Prometheus + Grafana runbook
-│   └── projet_academique.md          # Academic context (YNOV)
+├── .github/workflows/ci-cd.yaml      # CI 2 jobs : train → build-and-push
+├── data/samples/                     # CSV Open Data versionnés (reproductibilité CI)
+├── docker/                           # Un Dockerfile par service + requirements
+├── docker-compose.yml                # Serving + stack monitoring
+├── docs/                             # Architecture, ETL, serving, monitoring, gouvernance
+│   ├── monitoring.md                 # Runbook Prometheus + Grafana
+│   ├── projet_academique.md          # Contexte académique (YNOV)
+│   └── README.en.md                  # Version anglaise du présent README
 ├── monitoring/
-│   ├── prometheus/prometheus.yml     # 5s scrape config
-│   └── grafana/                      # Datasource + dashboard provisioning
+│   ├── prometheus/prometheus.yml     # Config scrape 5s
+│   └── grafana/                      # Provisioning datasource + dashboard
 ├── scripts/
-│   ├── load_test.py                  # Synthetic traffic generator
-│   └── shadow_test.py                # Containerised v1/v2 comparison runner
+│   ├── load_test.py                  # Générateur de trafic synthétique
+│   └── shadow_test.py                # Runner conteneurisé pour comparer v1/v2
 ├── serving/
-│   ├── app.py                        # FastAPI app with 4 ML metrics
-│   └── schemas.py                    # Pydantic with FR aliases
+│   ├── app.py                        # App FastAPI avec 4 métriques ML
+│   └── schemas.py                    # Pydantic avec aliases FR
 ├── src/
-│   ├── etl/                          # ETL with auto-encoding detection
+│   ├── etl/                          # ETL avec auto-détection d'encodage
 │   ├── training/                     # train v1/v2 + compare + evaluate
 │   └── utils/                        # log_utils, ml_utils, S3
-└── tests/                            # 10 pytest tests (schemas, models, API)
+└── tests/                            # 10 tests pytest (schemas, models, API)
 ```
 
 ---
 
-## 📚 Deep-dive documentation
+## 📚 Documentation détaillée
 
-| Doc | What's in it |
+| Doc | Contenu |
 | --- | --- |
-| [docs/architecture.md](docs/architecture.md) | Detailed architecture and data flow |
-| [docs/etl.md](docs/etl.md) | ETL pipeline and drift handling |
-| [docs/serving_api.md](docs/serving_api.md) | API endpoints, shadow testing, blue-green |
-| [docs/monitoring.md](docs/monitoring.md) | Prometheus + Grafana — full runbook |
-| [docs/run_local.md](docs/run_local.md) | Local execution guide |
-| [docs/Docker.md](docs/Docker.md) | Containerisation strategy |
-| [docs/registre_ia.md](docs/registre_ia.md) | AI registry / GDPR |
-| [docs/gouvernance_ia.md](docs/gouvernance_ia.md) | AI governance, rollback procedures |
+| [docs/architecture.md](docs/architecture.md) | Architecture détaillée et flux de données |
+| [docs/etl.md](docs/etl.md) | Pipeline ETL et gestion de la dérive |
+| [docs/serving_api.md](docs/serving_api.md) | Endpoints API, shadow testing, blue-green |
+| [docs/monitoring.md](docs/monitoring.md) | Prometheus + Grafana — runbook complet |
+| [docs/run_local.md](docs/run_local.md) | Guide d'exécution local |
+| [docs/Docker.md](docs/Docker.md) | Stratégie de conteneurisation |
+| [docs/registre_ia.md](docs/registre_ia.md) | Registre IA / RGPD |
+| [docs/gouvernance_ia.md](docs/gouvernance_ia.md) | Gouvernance IA, procédures de rollback |
 | [docs/difficultes_et_ameliorations.md](docs/difficultes_et_ameliorations.md) | Post-mortem + roadmap |
-| [docs/projet_academique.md](docs/projet_academique.md) | Academic context (YNOV) |
+| [docs/projet_academique.md](docs/projet_academique.md) | Contexte académique (YNOV) |
+| [docs/README.en.md](docs/README.en.md) | English version of this README |
 
 ---
 
-## 🚧 Known limitations & next steps
+## 🚧 Limitations connues & prochaines étapes
 
-Transparent about what's not done — this is a portfolio project, not a finished product.
+Transparent sur ce qui n'est pas fait — c'est un projet portfolio, pas un produit fini.
 
-- **Cloud deployment (AWS)** — Compose file ready ([docker-compose.aws.yml](docker-compose.aws.yml)), ECS deploy not finalised.
-- **HTTPS** — handled at the reverse proxy layer in a real deploy; not in the local stack.
-- **Drift detection (Evidently AI)** — current shadow disagreement counter is the v0; statistical drift detection is the next step.
-- **Model retraining job** — CI rebuilds models on every push, but a scheduled retraining pipeline on fresh Open Data would close the loop.
-- **`@app.on_event` deprecated** in FastAPI — should migrate to `lifespan` events (8 DeprecationWarnings in tests).
+- **Déploiement cloud (AWS)** — Compose file prêt ([docker-compose.aws.yml](docker-compose.aws.yml)), déploiement ECS non finalisé.
+- **HTTPS** — géré au niveau du reverse proxy dans un vrai déploiement ; pas dans la stack locale.
+- **Drift detection (Evidently AI)** — le compteur de désaccords actuel est le v0 ; la détection statistique de drift est la prochaine étape.
+- **Job de retraining** — la CI rebuilde les modèles à chaque push, mais un pipeline de retraining planifié sur les vraies données Open Data fermerait la boucle.
+- **`@app.on_event` deprecated** dans FastAPI — devrait migrer vers les `lifespan` events (8 DeprecationWarnings dans les tests).
 
 ---
 
-## 👤 Author
+## 👤 Auteur
 
 **Maël ZINSOU** — Data Engineering / MLOps
-Built as part of the YNOV M2 *Industrialisation de l'IA dans le Cloud* curriculum, then re-engineered as a portfolio project.
+Construit dans le cadre du cursus M2 *Industrialisation de l'IA dans le Cloud* (YNOV), puis re-engineeré comme projet portfolio.
 
 🔗 [LinkedIn](https://www.linkedin.com/in/) · 📫 maelzinsou@proton.me
 
 ---
 
-📌 *For the original academic-context README, see [docs/projet_academique.md](docs/projet_academique.md).*
+📌 *Pour le contexte académique d'origine, voir [docs/projet_academique.md](docs/projet_academique.md).*
