@@ -1,4 +1,4 @@
-# 🚦 InfoTrafic — Real-time traffic prediction, the MLOps way
+# 🚦 InfoTrafic - Real-time traffic prediction, the MLOps way
 
 [![CI](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml/badge.svg?branch=Prod)](https://github.com/Mael8zinsou/Info_Trafic/actions/workflows/ci-cd.yaml)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
@@ -15,13 +15,13 @@
 
 ## ✨ Highlights
 
-- 🏗️ **End-to-end pipeline** — Ingest → ETL → Training (v1 + v2) → Registry → FastAPI serving → Monitoring
-- 🔁 **Reproducible from scratch** — CI builds the models from versioned samples on every run
-- 🟦🟩 **Blue-green deployment** — switch between v1 / v2 by editing a single JSON file, no restart
-- 🕵️ **Shadow testing** — `/predict_v2` runs in parallel, disagreement counter exposed in Prometheus
-- 📊 **Live observability** — Grafana dashboard auto-provisioned with 4 custom ML metrics + standard HTTP
-- 🧪 **CI-validated** — pytest (schemas + models + API) + Docker smoke test + image push on `Prod`
-- 🛡️ **Drift-aware modelling** — v2 trades 8 points of accuracy on clean data for robustness against sensor failure
+- 🏗️ **End-to-end pipeline** - Ingest → ETL → Training (v1 + v2) → Registry → FastAPI serving → Monitoring
+- 🔁 **Reproducible from scratch** - CI builds the models from versioned samples on every run
+- 🟦🟩 **Blue-green deployment** - switch between v1 / v2 by editing a single JSON file, no restart
+- 🕵️ **Shadow testing** - `/predict_v2` runs in parallel, disagreement counter exposed in Prometheus
+- 📊 **Live observability** - Grafana dashboard auto-provisioned with 4 custom ML metrics + standard HTTP
+- 🧪 **CI-validated** - pytest (schemas + models + API) + Docker smoke test + image push on `Prod`
+- 🛡️ **Drift-aware modelling** - v2 trades 8 points of accuracy on clean data for robustness against sensor failure
 
 
 ## 🎬 60-second demo
@@ -41,26 +41,26 @@ python scripts/load_test.py --duration 120 --rps 5
 
 > The Grafana dashboard works in anonymous Viewer mode out of the box. No login required to see metrics flowing.
 
-### Grafana — ML serving dashboard
+### Grafana - ML serving dashboard
 
 ![Grafana ML serving dashboard](../assets/grafana-dashboard.png)
 
 *7 panels: active model gauge, total predictions, shadow disagreements, error rate, request rate per endpoint, latency p50/p95/p99 per model version, predictions per class stacked.*
 
-### Swagger UI — auto-generated API docs
+### Swagger UI - auto-generated API docs
 
 ![Swagger UI](../assets/swagger-ui.png)
 
 
 ## 🧠 Use case
 
-Predict the traffic state (`Fluide` / `Pré-saturé` / `Saturé` / `Bloqué`) of a Paris road segment from sensor data — open data from the City of Paris, real-world drift included (`Etat arc=invalide` when a sensor fails).
+Predict the traffic state (`Fluide` / `Pré-saturé` / `Saturé` / `Bloqué`) of a Paris road segment from sensor data - open data from the City of Paris, real-world drift included (`Etat arc=invalide` when a sensor fails).
 
 Two competing models live in production:
 
 | Model | Features | Accuracy (clean) | Behaviour under sensor failure |
 | --- | --- | --- | --- |
-| **v1** (baseline) | 7 numerical features | **0.99** | Stays optimistic — ignores `Etat arc` |
+| **v1** (baseline) | 7 numerical features | **0.99** | Stays optimistic - ignores `Etat arc` |
 | **v2** (drift-aware) | 7 num + `Etat arc` categorical | **0.97** | Hedges towards "Pré-saturé" when sensor reports `invalide` |
 
 v2 deliberately sacrifices clean-data accuracy for **robustness under real-world degradation**. The shadow endpoint and Grafana panel quantify that trade-off live.
@@ -109,7 +109,7 @@ flowchart LR
     TR -.artifacts.-> BP
 ```
 
-Three loosely-coupled layers — training writes artifacts, serving reads them, monitoring scrapes the API. No tight coupling, no synchronous runtime dependency between training and serving.
+Three loosely-coupled layers - training writes artifacts, serving reads them, monitoring scrapes the API. No tight coupling, no synchronous runtime dependency between training and serving.
 
 
 ## 🛠️ Tech stack
@@ -127,19 +127,19 @@ Three loosely-coupled layers — training writes artifacts, serving reads them, 
 
 ### Why each block matters
 
-#### Data Engineering — robust ETL on real-world data
+#### Data Engineering - robust ETL on real-world data
 The ETL [auto-detects encoding](../src/etl/app.py) (UTF-8 BOM, UTF-8, ISO-8859-1) because Open Data isn't always clean. CSVs are historised per run in `data/processed/history/` for audit. Feature engineering creates temporal features (`heure`, `jour_semaine`, `is_weekend`) and extracts lat/lon from a packed `geo_point_2d` field.
 
-#### ML — two competing models, one anti-drift strategy
+#### ML - two competing models, one anti-drift strategy
 v1 is the baseline (high accuracy on clean data). v2 adds the `Etat arc` categorical feature so the model can hedge when a sensor reports as failed. Both ship together; `active_model.json` decides which serves `/predict`. See [projet_academique.md](projet_academique.md#3-entraînement--retraining).
 
-#### Serving — blue-green deployment without restart
-[`get_active_version()`](../serving/app.py) re-reads `active_model.json` on every request. Switching v1 → v2 is `echo '{"active":"v2"}' > models/active_model.json` — instant, no rolling restart, no traffic loss.
+#### Serving - blue-green deployment without restart
+[`get_active_version()`](../serving/app.py) re-reads `active_model.json` on every request. Switching v1 → v2 is `echo '{"active":"v2"}' > models/active_model.json` - instant, no rolling restart, no traffic loss.
 
-#### Observability — 4 custom ML metrics, dashboard provisioned
-The serving exposes [`/metrics`](http://localhost:8001/metrics) with `ml_predictions_total`, `ml_prediction_latency_seconds`, `ml_active_model`, `ml_shadow_disagreements_total`. Grafana picks up the dashboard from `monitoring/grafana/dashboards/` on boot — no manual import. Full runbook: [monitoring.md](monitoring.md).
+#### Observability - 4 custom ML metrics, dashboard provisioned
+The serving exposes [`/metrics`](http://localhost:8001/metrics) with `ml_predictions_total`, `ml_prediction_latency_seconds`, `ml_active_model`, `ml_shadow_disagreements_total`. Grafana picks up the dashboard from `monitoring/grafana/dashboards/` on boot - no manual import. Full runbook: [monitoring.md](monitoring.md).
 
-#### CI/CD — fully reproducible
+#### CI/CD - fully reproducible
 The CI has two jobs. The first (`train`) runs the ETL on versioned samples, trains v1 + v2, and uploads the `.joblib` files as artifacts. The second (`build-and-push`) downloads them, runs pytest (10 tests), boots the serving container, smoke-tests `/health`, then builds and pushes the training image to Docker Hub. **From a clean checkout the entire stack can be rebuilt by GitHub Actions alone.**
 
 
@@ -195,7 +195,7 @@ InfoTrafic/
 | [architecture.md](architecture.md) | Detailed architecture and data flow |
 | [etl.md](etl.md) | ETL pipeline and drift handling |
 | [serving_api.md](serving_api.md) | API endpoints, shadow testing, blue-green |
-| [monitoring.md](monitoring.md) | Prometheus + Grafana — full runbook |
+| [monitoring.md](monitoring.md) | Prometheus + Grafana - full runbook |
 | [run_local.md](run_local.md) | Local execution guide |
 | [Docker.md](Docker.md) | Containerisation strategy |
 | [registre_ia.md](registre_ia.md) | AI registry / GDPR |
@@ -206,21 +206,21 @@ InfoTrafic/
 
 ## 🚧 Known limitations & next steps
 
-Transparent about what's not done — this is a portfolio project, not a finished product.
+Transparent about what's not done - this is a portfolio project, not a finished product.
 
-- **Cloud deployment (AWS)** — Compose file ready ([docker-compose.aws.yml](../docker-compose.aws.yml)), ECS deploy not finalised.
-- **HTTPS** — handled at the reverse proxy layer in a real deploy; not in the local stack.
-- **Drift detection (Evidently AI)** — current shadow disagreement counter is the v0; statistical drift detection is the next step.
-- **Model retraining job** — CI rebuilds models on every push, but a scheduled retraining pipeline on fresh Open Data would close the loop.
-- **`@app.on_event` deprecated** in FastAPI — should migrate to `lifespan` events (8 DeprecationWarnings in tests).
+- **Cloud deployment (AWS)** - Compose file ready ([docker-compose.aws.yml](../docker-compose.aws.yml)), ECS deploy not finalised.
+- **HTTPS** - handled at the reverse proxy layer in a real deploy; not in the local stack.
+- **Drift detection (Evidently AI)** - current shadow disagreement counter is the v0; statistical drift detection is the next step.
+- **Model retraining job** - CI rebuilds models on every push, but a scheduled retraining pipeline on fresh Open Data would close the loop.
+- **`@app.on_event` deprecated** in FastAPI - should migrate to `lifespan` events (8 DeprecationWarnings in tests).
 
 
 ## 👤 Author
 
-**Maël ZINSOU** — Data Engineering / MLOps
+**Maël ZINSOU** - Data Engineering / MLOps
 Built as part of the YNOV M2 *Industrialisation de l'IA dans le Cloud* curriculum, then re-engineered as a portfolio project.
 
-🔗 [LinkedIn](https://www.linkedin.com/in/) · 📫 maelzinsou@proton.me
+🔗 [LinkedIn](https://www.linkedin.com/in/mael-mike-zinsou-data-engineer/) · 📫 maelzinsou@proton.me
 
 
 📌 *For the original academic-context README, see [projet_academique.md](projet_academique.md).*
