@@ -12,7 +12,6 @@
 
 🇫🇷 *Version française disponible à la racine : [README.md](../README.md).*
 
----
 
 ## ✨ Highlights
 
@@ -24,7 +23,6 @@
 - 🧪 **CI-validated** — pytest (schemas + models + API) + Docker smoke test + image push on `Prod`
 - 🛡️ **Drift-aware modelling** — v2 trades 8 points of accuracy on clean data for robustness against sensor failure
 
----
 
 ## 🎬 60-second demo
 
@@ -53,7 +51,6 @@ python scripts/load_test.py --duration 120 --rps 5
 
 ![Swagger UI](../assets/swagger-ui.png)
 
----
 
 ## 🧠 Use case
 
@@ -68,7 +65,6 @@ Two competing models live in production:
 
 v2 deliberately sacrifices clean-data accuracy for **robustness under real-world degradation**. The shadow endpoint and Grafana panel quantify that trade-off live.
 
----
 
 ## 🏗️ Architecture
 
@@ -115,7 +111,6 @@ flowchart LR
 
 Three loosely-coupled layers — training writes artifacts, serving reads them, monitoring scrapes the API. No tight coupling, no synchronous runtime dependency between training and serving.
 
----
 
 ## 🛠️ Tech stack
 
@@ -147,7 +142,6 @@ The serving exposes [`/metrics`](http://localhost:8001/metrics) with `ml_predict
 #### CI/CD — fully reproducible
 The CI has two jobs. The first (`train`) runs the ETL on versioned samples, trains v1 + v2, and uploads the `.joblib` files as artifacts. The second (`build-and-push`) downloads them, runs pytest (10 tests), boots the serving container, smoke-tests `/health`, then builds and pushes the training image to Docker Hub. **From a clean checkout the entire stack can be rebuilt by GitHub Actions alone.**
 
----
 
 ## 🧪 What the CI does on every push to `Prod`
 
@@ -165,7 +159,6 @@ The CI has two jobs. The first (`train`) runs the ETL on versioned samples, trai
 
 Both must pass for the badge to stay green. Latest run: see the [Actions tab](https://github.com/Mael8zinsou/Info_Trafic/actions).
 
----
 
 ## 📁 Repository structure
 
@@ -194,7 +187,6 @@ InfoTrafic/
 └── tests/                            # 10 pytest tests (schemas, models, API)
 ```
 
----
 
 ## 📚 Deep-dive documentation
 
@@ -211,7 +203,6 @@ InfoTrafic/
 | [difficultes_et_ameliorations.md](difficultes_et_ameliorations.md) | Post-mortem + roadmap |
 | [projet_academique.md](projet_academique.md) | Academic context (YNOV) |
 
----
 
 ## 🚧 Known limitations & next steps
 
@@ -223,7 +214,6 @@ Transparent about what's not done — this is a portfolio project, not a finishe
 - **Model retraining job** — CI rebuilds models on every push, but a scheduled retraining pipeline on fresh Open Data would close the loop.
 - **`@app.on_event` deprecated** in FastAPI — should migrate to `lifespan` events (8 DeprecationWarnings in tests).
 
----
 
 ## 👤 Author
 
@@ -232,6 +222,5 @@ Built as part of the YNOV M2 *Industrialisation de l'IA dans le Cloud* curriculu
 
 🔗 [LinkedIn](https://www.linkedin.com/in/) · 📫 maelzinsou@proton.me
 
----
 
 📌 *For the original academic-context README, see [projet_academique.md](projet_academique.md).*

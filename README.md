@@ -12,7 +12,6 @@
 
 🇬🇧 *English version available at [docs/README.en.md](docs/README.en.md).*
 
----
 
 ## ✨ Highlights
 
@@ -24,7 +23,6 @@
 - 🧪 **Validé par la CI** — pytest (schemas + models + API) + Docker smoke test + push d'image sur `Prod`
 - 🛡️ **Modélisation drift-aware** — v2 sacrifie 8 points d'accuracy sur données propres pour rester robuste quand le capteur tombe en panne
 
----
 
 ## 🎬 Démo en 60 secondes
 
@@ -53,7 +51,6 @@ python scripts/load_test.py --duration 120 --rps 5
 
 ![Swagger UI](assets/swagger-ui.png)
 
----
 
 ## 🧠 Cas d'usage
 
@@ -68,7 +65,6 @@ Deux modèles concurrents cohabitent en production :
 
 v2 sacrifie volontairement de l'accuracy sur données propres pour gagner en **robustesse face à la dégradation terrain**. L'endpoint shadow et le panel Grafana quantifient ce trade-off en live.
 
----
 
 ## 🏗️ Architecture
 
@@ -115,7 +111,6 @@ flowchart LR
 
 Trois couches faiblement couplées — le training écrit des artefacts, le serving les lit, le monitoring scrape l'API. Pas de couplage runtime entre training et serving.
 
----
 
 ## 🛠️ Stack technique
 
@@ -147,7 +142,6 @@ Le serving expose [`/metrics`](http://localhost:8001/metrics) avec `ml_predictio
 #### CI/CD — entièrement reproductible
 La CI a deux jobs. Le premier (`train`) lance l'ETL sur les samples versionnés, entraîne v1 + v2, et upload les fichiers `.joblib` en artefacts. Le second (`build-and-push`) les télécharge, lance pytest (10 tests), démarre le container serving, smoke-test `/health`, puis build et push l'image de training sur Docker Hub. **Depuis un clone propre, toute la stack peut être rebuildée par GitHub Actions seul.**
 
----
 
 ## 🧪 Ce que fait la CI à chaque push sur `Prod`
 
@@ -165,7 +159,6 @@ La CI a deux jobs. Le premier (`train`) lance l'ETL sur les samples versionnés,
 
 Les deux jobs doivent passer pour que le badge reste vert. Run en cours : voir l'[onglet Actions](https://github.com/Mael8zinsou/Info_Trafic/actions).
 
----
 
 ## 📁 Structure du dépôt
 
@@ -195,7 +188,6 @@ InfoTrafic/
 └── tests/                            # 10 tests pytest (schemas, models, API)
 ```
 
----
 
 ## 📚 Documentation détaillée
 
@@ -213,7 +205,6 @@ InfoTrafic/
 | [docs/projet_academique.md](docs/projet_academique.md) | Contexte académique (YNOV) |
 | [docs/README.en.md](docs/README.en.md) | English version of this README |
 
----
 
 ## 🚧 Limitations connues & prochaines étapes
 
@@ -225,7 +216,6 @@ Transparent sur ce qui n'est pas fait — c'est un projet portfolio, pas un prod
 - **Job de retraining** — la CI rebuilde les modèles à chaque push, mais un pipeline de retraining planifié sur les vraies données Open Data fermerait la boucle.
 - **`@app.on_event` deprecated** dans FastAPI — devrait migrer vers les `lifespan` events (8 DeprecationWarnings dans les tests).
 
----
 
 ## 👤 Auteur
 
@@ -234,6 +224,5 @@ Construit dans le cadre du cursus M2 *Industrialisation de l'IA dans le Cloud* (
 
 🔗 [LinkedIn](https://www.linkedin.com/in/) · 📫 maelzinsou@proton.me
 
----
 
 📌 *Pour le contexte académique d'origine, voir [docs/projet_academique.md](docs/projet_academique.md).*
