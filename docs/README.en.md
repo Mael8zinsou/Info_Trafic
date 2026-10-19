@@ -220,6 +220,8 @@ Transparent about what's not done - this is a portfolio project, not a finished 
 **Maël ZINSOU** - Data Engineering / MLOps
 Built as part of the YNOV M2 *Industrialisation de l'IA dans le Cloud* curriculum, then re-engineered as a portfolio project.
 
+**Team project.** The original capstone was built as a team; the team's original repository is [Ivan-Mustiere/Info_Trafic](https://github.com/Ivan-Mustiere/Info_Trafic). This repository is the portfolio rework.
+
 🔗 [LinkedIn](https://www.linkedin.com/in/mael-mike-zinsou-data-engineer/) · 📫 maelzinsou@proton.me
 
 

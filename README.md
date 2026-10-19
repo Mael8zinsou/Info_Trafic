@@ -222,6 +222,8 @@ Transparent sur ce qui n'est pas fait - c'est un projet portfolio, pas un produi
 **Maël ZINSOU** - Data Engineering / MLOps
 Construit dans le cadre du cursus M2 *Industrialisation de l'IA dans le Cloud* (YNOV), puis re-engineeré comme projet portfolio.
 
+**Projet d'équipe.** Le projet fil rouge a été mené en équipe ; le dépôt d'origine de l'équipe est [Ivan-Mustiere/Info_Trafic](https://github.com/Ivan-Mustiere/Info_Trafic). Ce dépôt en est la reprise en version portfolio.
+
 🔗 [LinkedIn](https://www.linkedin.com/in/mael-mike-zinsou-data-engineer/) · 📫 maelzinsou@proton.me
 
 
