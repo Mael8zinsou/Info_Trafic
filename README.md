@@ -21,7 +21,7 @@
 - 🕵️ **Shadow testing** - `/predict_v2` tourne en parallèle, compteur de désaccords exposé en Prometheus
 - 📊 **Observabilité live** - dashboard Grafana auto-provisionné, 4 métriques ML custom + HTTP standard
 - 🧪 **Validé par la CI** - pytest (schemas + models + API) + Docker smoke test + push d'image sur `Prod`
-- 🛡️ **Modélisation drift-aware** - v2 sacrifie 8 points d'accuracy sur données propres pour rester robuste quand le capteur tombe en panne
+- 🛡️ **Modélisation drift-aware** - v2 sacrifie 2 points d'accuracy (0.99 → 0.97) sur données propres pour rester robuste quand le capteur tombe en panne
 
 
 ## 🎬 Démo en 60 secondes
