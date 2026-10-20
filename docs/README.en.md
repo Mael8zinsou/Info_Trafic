@@ -21,7 +21,7 @@
 - 🕵️ **Shadow testing** - `/predict_v2` runs in parallel, disagreement counter exposed in Prometheus
 - 📊 **Live observability** - Grafana dashboard auto-provisioned with 4 custom ML metrics + standard HTTP
 - 🧪 **CI-validated** - pytest (schemas + models + API) + Docker smoke test + image push on `Prod`
-- 🛡️ **Drift-aware modelling** - v2 trades 8 points of accuracy on clean data for robustness against sensor failure
+- 🛡️ **Drift-aware modelling** - v2 trades 2 points of accuracy (0.99 → 0.97) on clean data for robustness against sensor failure
 
 
 ## 🎬 60-second demo
